@@ -2,6 +2,8 @@
   <dictionary name="Daniel">
     <words>
       <w>emissive</w>
+      <w>gltf</w>
+      <w>gltfs</w>
       <w>lookat</w>
     </words>
   </dictionary>

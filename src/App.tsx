@@ -1,32 +1,33 @@
 import React, { Component } from 'react';
 import './App.scss';
 import GUI from './GUI';
-import Tile from "./components/Tile";
 import {Vector3} from "three";
-import {instanceOf} from "prop-types";
 import WorldMap from "./components/WorldMap";
 import {TileMap} from "./utils/mapTypes";
+import MeshLoader from "./assets/MeshLoader";
 
 const THREE = require('three');
 const ReactTHREE = require('react-three');
 const OrbitControls = require('three-orbit-controls')(THREE);
-const [Renderer, Scene, PerspectiveCamera, PointLight] = [ReactTHREE.Renderer, ReactTHREE.Scene, ReactTHREE.PerspectiveCamera, ReactTHREE.PointLight];
+const [Renderer, Scene, PerspectiveCamera, HemisphereLight, DirectionalLight] = [ReactTHREE.Renderer, ReactTHREE.Scene, ReactTHREE.PerspectiveCamera, ReactTHREE.HemisphereLight, ReactTHREE.DirectionalLight];
 
-class App extends Component<{}, any> {
+class App extends Component<any, any> {
 
   static controls: any;
   map: TileMap;
+  meshLoader: MeshLoader;
 
   constructor(props: Object) {
     super(props);
     App.controls = null;
     this.state = {
       width: 0,
-      height: 0
+      height: 0,
+      loadingProgress: 0
     };
     this.map = {
       "0,0": {
-        type: "empty",
+        type: "hall",
         height: 2
       },
       "0,1": {
@@ -50,6 +51,12 @@ class App extends Component<{}, any> {
       }
     };
     this.updateWindowDimensions = this.updateWindowDimensions.bind(this);
+    this.meshLoader = MeshLoader.getInstance();
+    this.meshLoader.onProgress((i: number) => {
+      this.setState({loadingProgress: i})
+    });
+    // @ts-ignore
+    window.THREE = THREE;
   }
 
   componentDidMount(): void {
@@ -68,11 +75,40 @@ class App extends Component<{}, any> {
     });
   }
 
+  onDirLightMounted(dirLight: THREE.DirectionalLight) {
+    // @ts-ignore
+    window.dirLight = dirLight;
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    var d = 50;
+    dirLight.shadow.camera.left = - d;
+    dirLight.shadow.camera.right = d;
+    dirLight.shadow.camera.top = d;
+    dirLight.shadow.camera.bottom = - d;
+    dirLight.shadow.camera.far = 3500;
+    dirLight.shadow.bias = - 0.0001;
+  }
+
   static _onCameraMounted(camera: THREE.PerspectiveCamera) {
     camera.up.set(0, 0, 1);
     App.controls = new OrbitControls(camera);
     App.controls.target = new Vector3(0, 0, 0);
+    App.controls.maxDistance = 200;
+    App.controls.minDistance = 100;
     App.controls.mouseButtons = { ORBIT: THREE.MOUSE.MIDDLE, ZOOM: null, PAN: THREE.MOUSE.LEFT }
+  }
+
+  static _onSceneMounted(scene: THREE.Scene) {
+    // @ts-ignore
+    window.scene = scene;
+    let h = new THREE.HemisphereLight(0x327aff, 0xffc77f, 0.6);
+    scene.add(h);
+  }
+
+  static _onRendererMounted(renderer: THREE.Renderer) {
+    // @ts-ignore
+    window.renderer = renderer;
   }
 
   render() {
@@ -86,15 +122,17 @@ class App extends Component<{}, any> {
       lookat: new THREE.Vector3(0, 0, 0)
     };
 
+    if (!this.meshLoader.isLoaded())
+      return <p>Loading assets {this.state.loadingProgress}/{this.meshLoader.loadingTotal}</p>;
+
     return (
         <div>
           <GUI/>
-          <Renderer width={this.state.width} height={this.state.height}>
-            <Scene width={this.state.width} height={this.state.height} camera="main-camera">
+          <Renderer width={this.state.width} height={this.state.height} background={0x2d2c5b} shadowMapEnabled={true} shadowMapType={THREE.PCFSoftShadowMap} ref={App._onRendererMounted}>
+            <Scene ref={App._onSceneMounted} width={this.state.width} height={this.state.height} camera="main-camera">
               <PerspectiveCamera ref={App._onCameraMounted} name="main-camera" {...cameraProps} />
-              <PointLight color={0xffffff} intensity={1} distance={0} position={new Vector3(0, 200, 0)}/>
-              <PointLight color={0xffffff} intensity={1} distance={0} position={new Vector3(100, 200, 100)}/>
-              <PointLight color={0xffffff} intensity={1} distance={0} position={new Vector3(-100, -200, -100)}/>
+              <DirectionalLight color={0xfff5e8} position={(new Vector3(0.1, 0.2, 0.95)).multiplyScalar(30)} intensity={1} ref={this.onDirLightMounted}/>
+              {/*<ReactTHREE.PointLight color={0xff0000} intensity={0.6} position={new Vector3(20, 20, 20)} castShadow={true}/>*/}
               <WorldMap map={this.map}/>
             </Scene>
           </Renderer>

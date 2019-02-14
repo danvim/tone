@@ -1,4 +1,4 @@
-export type TileType = "empty" | "void" | "pool";
+export type TileType = "empty" | "void" | "pool" | "hall";
 
 export type TileInfo = {
     type: TileType,
