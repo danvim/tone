@@ -16,7 +16,6 @@
     "react-redux": "^5.1.1",
     "react-scripts": "2.1.3",
     "react-three": "^0.9.7",
-    "react-three-renderer": "^3.2.4",
     "redux": "^4.0.1",
     "three": "^0.101.1",
     "three-gltf-loader": "^1.101.0",
